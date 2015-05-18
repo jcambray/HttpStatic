@@ -1,11 +1,15 @@
 package serveur;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -18,6 +22,7 @@ public class HttpStaticServer {
 	private ServerSocket serverSocket;
 	private Socket clientSocket;
 	private Map<String, String> domainsMap;
+	private String getValue,hostValue;
 	
 	private final static int port = 8181;
 	
@@ -28,6 +33,8 @@ public class HttpStaticServer {
 			serverSocket = new ServerSocket(port);
 			domainsMap = new HashMap<String, String>();
 			domainsMap.put("my.website.com", "C:\\www\\index");
+			getValue = "";
+			hostValue = "";
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -45,27 +52,38 @@ public class HttpStaticServer {
 			List<String> socketData = new ArrayList<String>();
 			try {
 				s = serverSocket.accept();
+				s.setKeepAlive(true);
 				System.out.println("connecte");
 				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+				FileInputStream fis;
+				BufferedInputStream bis;
+				BufferedOutputStream outToClient = new BufferedOutputStream(s.getOutputStream());
+				
 				String inputLine;
 				while (!(inputLine = in.readLine()).equals(""))
 				{
 					socketData.add(inputLine);
 				    System.out.println(inputLine);    
 				}
-				in.close();
-				String getValue = "";
-				String hostValue = "";
+				
 				parseData(socketData,getValue,hostValue);
-				String Path = domainsMap.get(hostValue);
+				String path = domainsMap.get(hostValue);
 				if(!getValue.equals(""))
 				{
-					File f = new File(getValue);
-					 ObjectOutputStream oos = new ObjectOutputStream(s.getOutputStream());
-					 oos.writeObject(f);
-					 oos.flush();
-					 oos.close();
+					File f = new File(path + "\\" +getValue);
+					 byte [] mybytearray  = new byte [(int)f.length()];
+					 fis = new FileInputStream(f);
+			         bis = new BufferedInputStream(fis);
+			         bis.read(mybytearray,0,mybytearray.length);
+			         outToClient.write(mybytearray,0,mybytearray.length);
+			         outToClient.flush();
+			         outToClient.close();
 				}
+				else
+				{
+					
+				}
+				s.close();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -80,15 +98,16 @@ public class HttpStaticServer {
 			String upperLine = line.toUpperCase();
 			if(upperLine.startsWith("GET"))
 			{
-				getval = line.split(" ")[1];
+				getValue = line.split(" ")[1];
 			}
 			if(upperLine.startsWith("HOST"))
 			{
-				hostVal = line.split(" ")[1]
+				hostValue = line.split(" ")[1]
 						.split(":")[0];
 			}
 		}
 	}
+	
 	
 	
 }
