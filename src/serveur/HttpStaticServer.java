@@ -26,8 +26,8 @@ public class HttpStaticServer {
 	{
 		try {
 			serverSocket = new ServerSocket(port);
-			domainsMap = new HashMap<String, String>();
-			domainsMap.put("my.website.com", "C:\\www\\index");
+			IniFile ini = new IniFile("src/config.ini");
+			domainsMap = ini.getMap();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
