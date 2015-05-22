@@ -1,10 +1,7 @@
 package serveur;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
@@ -18,20 +15,19 @@ import java.util.Map;
 public class HttpStaticServer {
 
 	private ServerSocket serverSocket;
-	private Socket clientSocket;
 	private Map<String, String> domainsMap;
-	private String getValue,hostValue;
+	private Map<String,LocalSession> localSessionsMap;
+	private String getValue, hostValue;
 	private final static int port = 8181;
 
 	public HttpStaticServer() {
 		try {
 			serverSocket = new ServerSocket(port);
-			domainsMap = new HashMap<String, String>();
-			domainsMap.put("my.website.com", "C:\\www\\index");
 			getValue = "";
 			hostValue = "";
 			IniFile ini = new IniFile("src/config.ini");
 			domainsMap = ini.getMap();
+			localSessionsMap = new HashMap<String, LocalSession>();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -46,35 +42,34 @@ public class HttpStaticServer {
 				s = serverSocket.accept();
 				s.setKeepAlive(true);
 				System.out.println("connecte");
-				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream()));
-				FileInputStream fis;
-				BufferedInputStream bis;
-				BufferedOutputStream outToClient = new BufferedOutputStream(s.getOutputStream());
+				BufferedReader in = new BufferedReader(new InputStreamReader(
+						s.getInputStream()));
 				String inputLine;
 				while (!(inputLine = in.readLine()).equals("")) {
 					socketData.add(inputLine);
 					System.out.println(inputLine);
 				}
 
-				String getValue = "";
-				String hostValue = "";
-				parseData(socketData, getValue, hostValue);
-				String Path = domainsMap.get(hostValue);
+				parseData(socketData);
+				String path = domainsMap.get(hostValue);
 				if (!getValue.equals("")) {
-					File fi = new File(getValue);
+					File fi = new File(path + "\\" +getValue);
 					ObjectOutputStream oos = new ObjectOutputStream(
 							s.getOutputStream());
 					oos.writeObject(fi);
 					oos.flush();
 					oos.close();
-				}
-				else
-				{
+				} else {
 					
+					String filesString = getFilesNames(hostValue);
+					ObjectOutputStream oos = new ObjectOutputStream(
+							s.getOutputStream());
+					oos.writeObject(filesString);
+					oos.flush();
+					oos.close();
 				}
 				s.close();
-				}
-			 catch (IOException e) {
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
 
@@ -82,35 +77,36 @@ public class HttpStaticServer {
 
 	}
 
-	private void parseData(List<String> dataList, String getval, String hostVal) {
+	private void parseData(List<String> dataList) {
 		for (String line : dataList) {
 			String upperLine = line.toUpperCase();
 
-			if(upperLine.startsWith("GET"))
-			{
+			if (upperLine.startsWith("GET")) {
 				getValue = line.split(" ")[1];
 			}
-			if(upperLine.startsWith("HOST"))
-			{
-				hostValue = line.split(" ")[1]
-						.split(":")[0];
+			if (upperLine.startsWith("HOST")) {
+				hostValue = line.split(" ")[1].split(":")[0];
 			}
 		}
-		
+
 	}
 
-	private void getFilesNames(String path) {
+	private String getFilesNames(String path) {
 
 		File folder = new File(path);
 		File[] listOfFiles = folder.listFiles();
-
+		StringBuilder sbuilder = new StringBuilder();
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile()) {
 				System.out.println("File " + listOfFiles[i].getName());
+				sbuilder.append("<a href=" +listOfFiles[i].getName() + "</a>");
 			} else if (listOfFiles[i].isDirectory()) {
 				System.out.println("Directory " + listOfFiles[i].getName());
+				sbuilder.append("<a href=" +listOfFiles[i].getName() + "</a>");
 			}
 		}
+		return sbuilder.toString();
 	}
+
 
 }
